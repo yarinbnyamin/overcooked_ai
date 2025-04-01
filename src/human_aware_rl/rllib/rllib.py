@@ -11,7 +11,7 @@ import gym as gymnasium  # Things break with gymnasium because rllib can't handl
 import numpy as np
 import ray
 from ray.rllib.agents.ppo import PPOTrainer
-from ray.rllib.algorithms.callbacks import DefaultCallbacks
+from ray.rllib.agents.callbacks import DefaultCallbacks
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from ray.rllib.models import ModelCatalog
 from ray.tune.logger import UnifiedLogger
