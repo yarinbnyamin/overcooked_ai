@@ -1,6 +1,12 @@
 import os
 import sys
 
+
+# for running locally
+os.environ["HOST"] = "0.0.0.0"
+os.environ["PORT"] = "8000"
+os.environ["CONF_PATH"] = "config.json"
+
 # Import and patch the production eventlet server if necessary
 if os.getenv("FLASK_ENV", "production") == "production":
     import eventlet
@@ -328,9 +334,7 @@ def _ensure_consistent_state():
     for game_id in ACTIVE_GAMES:
         active_games.add(game_id)
 
-    assert (
-        waiting_games.union(active_games) == all_games
-    ), "WAITING union ACTIVE != ALL"
+    assert waiting_games.union(active_games) == all_games, "WAITING union ACTIVE != ALL"
 
     assert not waiting_games.intersection(
         active_games
@@ -346,9 +350,7 @@ def _ensure_consistent_state():
 
 def get_agent_names():
     return [
-        d
-        for d in os.listdir(AGENT_DIR)
-        if os.path.isdir(os.path.join(AGENT_DIR, d))
+        d for d in os.listdir(AGENT_DIR) if os.path.isdir(os.path.join(AGENT_DIR, d))
     ]
 
 
@@ -363,9 +365,7 @@ def get_agent_names():
 @app.route("/")
 def index():
     agent_names = get_agent_names()
-    return render_template(
-        "index.html", agent_names=agent_names, layouts=LAYOUTS
-    )
+    return render_template("index.html", agent_names=agent_names, layouts=LAYOUTS)
 
 
 @app.route("/predefined")
@@ -642,16 +642,12 @@ def play_game(game: OvercookedGame, fps=6):
             )
             socketio.sleep(game.reset_timeout / 1000)
         else:
-            socketio.emit(
-                "state_pong", {"state": game.get_state()}, room=game.id
-            )
+            socketio.emit("state_pong", {"state": game.get_state()}, room=game.id)
         socketio.sleep(1 / fps)
 
     with game.lock:
         data = game.get_data()
-        socketio.emit(
-            "end_game", {"status": status, "data": data}, room=game.id
-        )
+        socketio.emit("end_game", {"status": status, "data": data}, room=game.id)
 
         if status != Game.Status.INACTIVE:
             game.deactivate()

@@ -10,6 +10,10 @@ from time import time
 import ray
 from utils import DOCKER_VOLUME, create_dirs
 
+import sys
+
+sys.path.append("../..")
+
 from human_aware_rl.rllib.rllib import load_agent
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
@@ -53,7 +57,6 @@ def fix_bc_path(path):
 
 
 class Game(ABC):
-
     """
     Class representing a game object. Coordinates the simultaneous actions of arbitrary
     number of players. Override this base class in order to use.
@@ -315,7 +318,6 @@ class Game(ABC):
 
 
 class DummyGame(Game):
-
     """
     Standin class used to test basic server logic
     """
@@ -343,16 +345,15 @@ class DummyGame(Game):
 
 
 class DummyInteractiveGame(Game):
-
     """
     Standing class used to test interactive components of the server logic
     """
 
     def __init__(self, **kwargs):
         super(DummyInteractiveGame, self).__init__(**kwargs)
-        self.max_players = int(
-            kwargs.get("playerZero", "human") == "human"
-        ) + int(kwargs.get("playerOne", "human") == "human")
+        self.max_players = int(kwargs.get("playerZero", "human") == "human") + int(
+            kwargs.get("playerOne", "human") == "human"
+        )
         self.max_count = kwargs.get("max_count", 30)
         self.counter = 0
         self.counts = [0] * self.max_players
@@ -419,7 +420,7 @@ class OvercookedGame(Game):
         showPotential=False,
         randomized=False,
         ticks_per_ai_action=1,
-        **kwargs
+        **kwargs,
     ):
         super(OvercookedGame, self).__init__(**kwargs)
         self.show_potential = showPotential
@@ -452,17 +453,13 @@ class OvercookedGame(Game):
         if playerZero != "human":
             player_zero_id = playerZero + "_0"
             self.add_player(player_zero_id, idx=0, buff_size=1, is_human=False)
-            self.npc_policies[player_zero_id] = self.get_policy(
-                playerZero, idx=0
-            )
+            self.npc_policies[player_zero_id] = self.get_policy(playerZero, idx=0)
             self.npc_state_queues[player_zero_id] = LifoQueue()
 
         if playerOne != "human":
             player_one_id = playerOne + "_1"
             self.add_player(player_one_id, idx=1, buff_size=1, is_human=False)
-            self.npc_policies[player_one_id] = self.get_policy(
-                playerOne, idx=1
-            )
+            self.npc_policies[player_one_id] = self.get_policy(playerOne, idx=1)
             self.npc_state_queues[player_one_id] = LifoQueue()
         # Always kill ray after loading agent, otherwise, ray will crash once process exits
         # Only kill ray after loading both agents to avoid having to restart ray during loading
@@ -484,9 +481,7 @@ class OvercookedGame(Game):
         return self._curr_game_over() and not self.is_finished()
 
     def add_player(self, player_id, idx=None, buff_size=-1, is_human=True):
-        super(OvercookedGame, self).add_player(
-            player_id, idx=idx, buff_size=buff_size
-        )
+        super(OvercookedGame, self).add_player(player_id, idx=idx, buff_size=buff_size)
         if is_human:
             self.human_players.add(player_id)
         else:
@@ -556,13 +551,9 @@ class OvercookedGame(Game):
 
         # Apply overcooked game logic to get state transition
         prev_state = self.state
-        self.state, info = self.mdp.get_state_transition(
-            prev_state, joint_action
-        )
+        self.state, info = self.mdp.get_state_transition(prev_state, joint_action)
         if self.show_potential:
-            self.phi = self.mdp.potential_function(
-                prev_state, self.mp, gamma=0.99
-            )
+            self.phi = self.mdp.potential_function(prev_state, self.mp, gamma=0.99)
 
         # Send next state to all background consumers if needed
         if self.curr_tick % self.ticks_per_ai_action == 0:
@@ -597,9 +588,7 @@ class OvercookedGame(Game):
 
     def enqueue_action(self, player_id, action):
         overcooked_action = self.action_to_overcooked_action[action]
-        super(OvercookedGame, self).enqueue_action(
-            player_id, overcooked_action
-        )
+        super(OvercookedGame, self).enqueue_action(player_id, overcooked_action)
 
     def reset(self):
         status = super(OvercookedGame, self).reset()
@@ -628,9 +617,7 @@ class OvercookedGame(Game):
             )
         self.state = self.mdp.get_standard_start_state()
         if self.show_potential:
-            self.phi = self.mdp.potential_function(
-                self.state, self.mp, gamma=0.99
-            )
+            self.phi = self.mdp.potential_function(self.state, self.mp, gamma=0.99)
         self.start_time = time()
         self.curr_tick = 0
         self.score = 0
@@ -660,9 +647,7 @@ class OvercookedGame(Game):
         state_dict["potential"] = self.phi if self.show_potential else None
         state_dict["state"] = self.state.to_dict()
         state_dict["score"] = self.score
-        state_dict["time_left"] = max(
-            self.max_time - (time() - self.start_time), 0
-        )
+        state_dict["time_left"] = max(self.max_time - (time() - self.start_time), 0)
         return state_dict
 
     def to_json(self):
@@ -680,9 +665,7 @@ class OvercookedGame(Game):
                 agent = load_agent(fpath, agent_index=idx)
                 return agent
             except Exception as e:
-                raise IOError(
-                    "Error loading Rllib Agent\n{}".format(e.__repr__())
-                )
+                raise IOError("Error loading Rllib Agent\n{}".format(e.__repr__()))
         else:
             try:
                 fpath = os.path.join(AGENT_DIR, npc_id, "agent.pickle")
@@ -712,7 +695,6 @@ class OvercookedGame(Game):
 
 
 class OvercookedTutorial(OvercookedGame):
-
     """
     Wrapper on OvercookedGame that includes additional data for tutorial mechanics, most notably the introduction of tutorial "phases"
 
@@ -728,7 +710,7 @@ class OvercookedTutorial(OvercookedGame):
         playerZero="human",
         playerOne="AI",
         phaseTwoScore=15,
-        **kwargs
+        **kwargs,
     ):
         super(OvercookedTutorial, self).__init__(
             layouts=layouts,
@@ -736,7 +718,7 @@ class OvercookedTutorial(OvercookedGame):
             playerZero=playerZero,
             playerOne=playerOne,
             showPotential=False,
-            **kwargs
+            **kwargs,
         )
         self.phase_two_score = phaseTwoScore
         self.phase_two_finished = False
